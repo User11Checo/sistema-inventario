@@ -27,6 +27,7 @@ public class Producto {
         System.out.println("Precio: $" + precio);
         System.out.println("Existencia: " + existencia);
         System.out.println("Estado: Producto registrado");
+        System.out.println("Estado: Producto disponible");
     }
 
     public static void main(String[] args) {
