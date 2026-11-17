@@ -24,7 +24,7 @@ public class Producto {
     public void mostrarInformacion() {
         System.out.println("Codigo: " + codigo);
         System.out.println("Nombre: " + nombre);
-        System.out.println("Precio: $" + precio);
+        System.out.println("Precio: $" + (precio * 10));
         System.out.println("Existencia: " + existencia);
         System.out.println("Estado: Producto registrado");
         System.out.println("Estado: Producto disponible");
