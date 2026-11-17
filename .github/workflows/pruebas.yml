@@ -1,0 +1,27 @@
+name: Pruebas Producto
+
+on:
+  push:
+    branches: [ main, "test/**", "feature/**" ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el codigo del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Compilar y ejecutar las pruebas
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh
