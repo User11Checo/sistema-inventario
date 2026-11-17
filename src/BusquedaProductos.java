@@ -36,7 +36,7 @@ public class BusquedaProductos {
         // v1.1.0: resumen del inventario
         System.out.println("Resumen del inventario:");
         int totalUnidades = 0;
-        for (int i = 0; i <= inventario.size(); i++) {
+        for (int i = 0; i < inventario.size(); i++) {
             totalUnidades += inventario.get(i).getExistencia();
         }
         System.out.println("Productos registrados: " + inventario.size());
