@@ -1,0 +1,38 @@
+name: Build Sistema de Inventario
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el codigo del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (JDK Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Mostrar version de Java
+        run: |
+          java -version
+          javac -version
+
+      - name: Compilar el codigo fuente
+        run: |
+          mkdir -p build/classes
+          javac -Xlint:all -d build/classes src/*.java
+
+      - name: Construir el archivo JAR
+        run: jar --create --file build/sistema-inventario.jar --main-class Producto -C build/classes .
+
+      - name: Ejecutar el programa construido
+        run: java -jar build/sistema-inventario.jar
