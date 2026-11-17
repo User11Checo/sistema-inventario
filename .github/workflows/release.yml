@@ -1,0 +1,59 @@
+name: Liberacion del Sistema de Inventario
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version a liberar (ej. v1.0.0). Se crea la etiqueta si las pruebas pasan."
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  VERSION: ${{ inputs.version || github.ref_name }}
+
+jobs:
+  liberar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Ejecutar pruebas
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh
+
+      - name: Construir el JAR
+        run: |
+          mkdir -p build/classes
+          javac -d build/classes src/*.java
+          jar --create --file build/sistema-inventario.jar --main-class Producto -C build/classes .
+
+      - name: Crear paquete
+        run: |
+          mkdir -p dist/sistema-inventario-${VERSION}
+          cp -r src dist/sistema-inventario-${VERSION}/
+          cp build/sistema-inventario.jar dist/sistema-inventario-${VERSION}/
+          cd dist
+          zip -r ../sistema-inventario-${VERSION}.zip sistema-inventario-${VERSION}
+
+      - name: Publicar version
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ env.VERSION }} - Sistema de Inventario
+          files: sistema-inventario-${{ env.VERSION }}.zip
+          generate_release_notes: true
