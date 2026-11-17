@@ -1,0 +1,121 @@
+name: Despliegue del Sistema de Inventario
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version publicada en Releases (ej. v1.0.2)"
+        required: true
+        default: "v1.0.2"
+      version_anterior:
+        description: "(Opcional, destino runner) version que ya estaba instalada antes de esta"
+        required: false
+        default: ""
+      destino:
+        description: "runner = entorno de GitHub Actions | servidor = maquina por SSH (requiere secretos DEPLOY_*)"
+        required: true
+        default: "runner"
+        type: choice
+        options:
+          - runner
+          - servidor
+      accion:
+        description: "desplegar = instalar la version | rollback = regresar a la anterior (solo servidor)"
+        required: true
+        default: "desplegar"
+        type: choice
+        options:
+          - desplegar
+          - rollback
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar scripts de despliegue
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: deploy
+
+      - name: Descargar version liberada
+        if: inputs.accion == 'desplegar'
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: ${{ github.repository }}
+          tag: ${{ inputs.version }}
+          fileName: sistema-inventario-${{ inputs.version }}.zip
+          out-file-path: paquetes
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Descargar version anterior
+        if: inputs.accion == 'desplegar' && inputs.version_anterior != ''
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: ${{ github.repository }}
+          tag: ${{ inputs.version_anterior }}
+          fileName: sistema-inventario-${{ inputs.version_anterior }}.zip
+          out-file-path: paquetes
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verificar contenido del paquete
+        if: inputs.accion == 'desplegar'
+        run: |
+          ls -l paquetes
+          unzip -l paquetes/sistema-inventario-${{ inputs.version }}.zip
+
+      # ---------- Destino: runner de GitHub Actions ----------
+      - name: Preparar entorno de destino (Java 21)
+        if: inputs.destino == 'runner'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Desplegar en el entorno de destino (runner)
+        if: inputs.destino == 'runner' && inputs.accion == 'desplegar'
+        run: |
+          mkdir -p ~/sistema-inventario
+          cp -r paquetes deploy ~/sistema-inventario/
+          if [ -n "${{ inputs.version_anterior }}" ]; then
+            bash ~/sistema-inventario/deploy/desplegar.sh ${{ inputs.version_anterior }}
+          fi
+          bash ~/sistema-inventario/deploy/desplegar.sh ${{ inputs.version }}
+
+      - name: Estado final del despliegue (runner)
+        if: always() && inputs.destino == 'runner' && inputs.accion == 'desplegar'
+        run: |
+          ls -l ~/sistema-inventario
+          cat ~/sistema-inventario/historial-despliegues.log
+
+      # ---------- Destino: servidor por SSH ----------
+      - name: Transferir paquete y scripts al servidor
+        if: inputs.destino == 'servidor' && inputs.accion == 'desplegar'
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          source: "paquetes/*,deploy/*"
+          target: sistema-inventario
+
+      - name: Instalar y verificar en el servidor
+        if: inputs.destino == 'servidor' && inputs.accion == 'desplegar'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          script: bash ~/sistema-inventario/deploy/desplegar.sh ${{ inputs.version }}
+
+      - name: Recuperar version anterior en el servidor
+        if: inputs.destino == 'servidor' && inputs.accion == 'rollback'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          script: bash ~/sistema-inventario/deploy/rollback.sh
