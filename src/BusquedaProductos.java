@@ -33,6 +33,15 @@ public class BusquedaProductos {
         inventario.add(new Producto("P002", "Mouse inalambrico", 199.00, 30));
         inventario.add(new Producto("P003", "Teclado mecanico", 1250.00, 5));
 
+        // v1.1.0: resumen del inventario
+        System.out.println("Resumen del inventario:");
+        int totalUnidades = 0;
+        for (int i = 0; i <= inventario.size(); i++) {
+            totalUnidades += inventario.get(i).getExistencia();
+        }
+        System.out.println("Productos registrados: " + inventario.size());
+        System.out.println("Unidades en existencia: " + totalUnidades);
+
         System.out.println("Busqueda por codigo P002:");
         Producto encontrado = buscarPorCodigo(inventario, "P002");
         if (encontrado != null) {
